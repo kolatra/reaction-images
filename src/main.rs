@@ -28,21 +28,17 @@ async fn main() -> anyhow::Result<()> {
     while let Some(row) = results_stream.try_next().await? {
         let image: Vec<u8> = row.get("url");
         let s = std::str::from_utf8(&image)?;
-        let s = s.to_owned();
-        println!("url: {}", s);
-        urls.push(s.clone());
+        urls.push(s.to_owned());
 
-        if !s.contains("discordapp") {
-            continue;
+        if s.contains("discordapp") {
+            let extension = s.split('.').last().unwrap();
+            let bytes = reqwest::get(s).await?.bytes().await?;
+
+            let mut file = std::fs::File::create(format!("{}/{}.{}", args.output_file, i, extension))?;
+            println!("writing to file");
+            file.write_all(&bytes)?;
+            i += 1;
         }
-
-        let extension = s.split('.').last().unwrap();
-        let bytes = reqwest::get(&s).await?.bytes().await?;
-
-        let mut file = std::fs::File::create(format!("{}/{}.{}", args.output_file, i, extension))?;
-        println!("writing to file");
-        file.write_all(&bytes)?;
-        i += 1;
     }
 
     let mut file = std::fs::File::create(args.urls_file)?;
